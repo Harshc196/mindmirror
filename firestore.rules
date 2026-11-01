@@ -1,0 +1,48 @@
+rules_version = '2';
+
+// Every user can only ever see and change their own data.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function inRange(v, lo, hi) {
+      return v >= lo && v <= hi;
+    }
+
+    function validLog() {
+      let d = request.resource.data;
+      return d.date is timestamp
+        && d.sleepHours is number && inRange(d.sleepHours, 0, 24)
+        && d.mood is int && inRange(d.mood, 1, 10)
+        && d.energy is int && inRange(d.energy, 1, 10)
+        && d.productivity is int && inRange(d.productivity, 1, 10)
+        && d.workload is int && inRange(d.workload, 1, 10)
+        && d.activityMinutes is int && inRange(d.activityMinutes, 0, 1440)
+        && d.note is string && d.note.size() <= 500;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      match /logs/{logId} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid) && validLog();
+      }
+
+      // AI reflections: written by the app after Gemini responds.
+      match /reflections/{id} {
+        allow read, delete: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(
+               ['headline', 'summary', 'trends', 'suggestions', 'source', 'daysLogged', 'createdAt'])
+          && request.resource.data.headline is string
+          && request.resource.data.summary is string && request.resource.data.summary.size() < 2000
+          && request.resource.data.trends is list && request.resource.data.trends.size() <= 5
+          && request.resource.data.suggestions is list && request.resource.data.suggestions.size() <= 5;
+      }
+    }
+  }
+}

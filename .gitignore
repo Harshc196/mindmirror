@@ -1,0 +1,14 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+
+# Firebase
+functions/node_modules/
+firebase-debug.log
+.runtimeconfig.json
+functions/.secret.local
